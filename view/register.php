@@ -1,7 +1,25 @@
 <?php
 session_start();
 require_once '../config/database.php';
-require_once '../encryption/aes_gcm.php'; // Include AES-GCM encryption
+
+function encrypt_user_data($data) {
+    $encryption_key = '0123456789abcdef0123456789abcdef'; // 32 chars for AES-256
+    $method = "AES-256-CBC";
+    
+    // Generate a random IV
+    $iv = openssl_random_pseudo_bytes(16);
+    
+    $encrypted = openssl_encrypt(
+        $data,
+        $method,
+        $encryption_key,
+        OPENSSL_RAW_DATA,
+        $iv
+    );
+    
+    // Combine IV and encrypted data
+    return base64_encode($iv . $encrypted);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'];
@@ -12,16 +30,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $social_security_number = $_POST['social_security_number'];
     $email = $_POST['email'];
 
-    // Generate a 32-byte key and 12-byte IV for AES-GCM
-    $key = random_bytes(32);
-    $iv = random_bytes(12);
-
     // Encrypt sensitive data
-    $encrypted_name = aes_gcm_encrypt($name, $key, $iv);
-    $encrypted_phone_number = aes_gcm_encrypt($phone_number, $key, $iv);
-    $encrypted_address = aes_gcm_encrypt($address, $key, $iv);
-    $encrypted_social_security_number = aes_gcm_encrypt($social_security_number, $key, $iv);
-    $encrypted_email = aes_gcm_encrypt($email, $key, $iv);
+    $encrypted_name = encrypt_user_data($name);
+    $encrypted_phone_number = encrypt_user_data($phone_number);
+    $encrypted_address = encrypt_user_data($address);
+    $encrypted_social_security_number = encrypt_user_data($social_security_number);
+    $encrypted_email = encrypt_user_data($email);
 
     try {
         $stmt = $pdo->prepare("INSERT INTO users (username, password, name, phone_number, address, social_security_number, email) VALUES (:username, :password, :name, :phone_number, :address, :social_security_number, :email)");

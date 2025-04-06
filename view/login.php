@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once '../config/database.php';
-require_once '../encryption/aes_gcm.php'; // Include AES-GCM encryption
+require_once '../encryption/decrypt_user_data.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'];
@@ -13,24 +13,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password'])) {
-            // Decrypt sensitive data
-            $key = random_bytes(32); // Use the same key used for encryption
-            $iv = random_bytes(12); // Use the same IV used for encryption
-
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
-            $_SESSION['name'] = aes_gcm_decrypt($user['name'], $key, $iv);
-            $_SESSION['phone_number'] = aes_gcm_decrypt($user['phone_number'], $key, $iv);
-            $_SESSION['address'] = aes_gcm_decrypt($user['address'], $key, $iv);
-            $_SESSION['social_security_number'] = aes_gcm_decrypt($user['social_security_number'], $key, $iv);
-            $_SESSION['email'] = aes_gcm_decrypt($user['email'], $key, $iv);
+            
+            // Decrypt sensitive data
+            $_SESSION['name'] = decrypt_user_data($user['name']);
+            $_SESSION['phone_number'] = decrypt_user_data($user['phone_number']);
+            $_SESSION['address'] = decrypt_user_data($user['address']);
+            $_SESSION['social_security_number'] = decrypt_user_data($user['social_security_number']);
+            $_SESSION['email'] = decrypt_user_data($user['email']);
 
-            header('Location: dashboard.php');
-            exit();
+            if ($_SESSION['name'] === false || $_SESSION['phone_number'] === false || 
+                $_SESSION['address'] === false || $_SESSION['social_security_number'] === false || 
+                $_SESSION['email'] === false) {
+                error_log("Decryption failed for user: " . $username);
+                if ($_SESSION['name'] === false) error_log("Name decryption failed");
+                if ($_SESSION['phone_number'] === false) error_log("Phone number decryption failed");
+                if ($_SESSION['address'] === false) error_log("Address decryption failed");
+                if ($_SESSION['social_security_number'] === false) error_log("SSN decryption failed");
+                if ($_SESSION['email'] === false) error_log("Email decryption failed");
+                $error = "Error decrypting user data. Please contact administrator.";
+            } else {
+                header('Location: dashboard.php');
+                exit();
+            }
         } else {
             $error = "Invalid username or password.";
         }
     } catch (Exception $e) {
+        error_log("Login error: " . $e->getMessage());
         $error = "Error: " . $e->getMessage();
     }
 }

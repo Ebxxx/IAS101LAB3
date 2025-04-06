@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/database.php';
+require_once '../encryption/aes_gcm.php'; // Include AES-GCM encryption
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'];
@@ -11,16 +12,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $social_security_number = $_POST['social_security_number'];
     $email = $_POST['email'];
 
+    // Generate a 32-byte key and 12-byte IV for AES-GCM
+    $key = random_bytes(32);
+    $iv = random_bytes(12);
+
+    // Encrypt sensitive data
+    $encrypted_name = aes_gcm_encrypt($name, $key, $iv);
+    $encrypted_phone_number = aes_gcm_encrypt($phone_number, $key, $iv);
+    $encrypted_address = aes_gcm_encrypt($address, $key, $iv);
+    $encrypted_social_security_number = aes_gcm_encrypt($social_security_number, $key, $iv);
+    $encrypted_email = aes_gcm_encrypt($email, $key, $iv);
+
     try {
         $stmt = $pdo->prepare("INSERT INTO users (username, password, name, phone_number, address, social_security_number, email) VALUES (:username, :password, :name, :phone_number, :address, :social_security_number, :email)");
         $stmt->execute([
             'username' => $username,
             'password' => $password,
-            'name' => $name,
-            'phone_number' => $phone_number,
-            'address' => $address,
-            'social_security_number' => $social_security_number,
-            'email' => $email
+            'name' => $encrypted_name,
+            'phone_number' => $encrypted_phone_number,
+            'address' => $encrypted_address,
+            'social_security_number' => $encrypted_social_security_number,
+            'email' => $encrypted_email
         ]);
         header('Location: login.php');
         exit();

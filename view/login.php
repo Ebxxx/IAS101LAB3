@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/database.php';
+require_once '../encryption/aes_gcm.php'; // Include AES-GCM encryption
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'];
@@ -12,13 +13,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password'])) {
+            // Decrypt sensitive data
+            $key = random_bytes(32); // Use the same key used for encryption
+            $iv = random_bytes(12); // Use the same IV used for encryption
+
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
-            $_SESSION['name'] = $user['name'];
-            $_SESSION['phone_number'] = $user['phone_number'];
-            $_SESSION['address'] = $user['address'];
-            $_SESSION['social_security_number'] = $user['social_security_number'];
-            $_SESSION['email'] = $user['email'];
+            $_SESSION['name'] = aes_gcm_decrypt($user['name'], $key, $iv);
+            $_SESSION['phone_number'] = aes_gcm_decrypt($user['phone_number'], $key, $iv);
+            $_SESSION['address'] = aes_gcm_decrypt($user['address'], $key, $iv);
+            $_SESSION['social_security_number'] = aes_gcm_decrypt($user['social_security_number'], $key, $iv);
+            $_SESSION['email'] = aes_gcm_decrypt($user['email'], $key, $iv);
+
             header('Location: dashboard.php');
             exit();
         } else {

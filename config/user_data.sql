@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS users;
+
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
@@ -5,7 +7,8 @@ CREATE TABLE users (
     name TEXT NOT NULL,
     phone_number TEXT NOT NULL,
     address TEXT NOT NULL,
-    social_security_number TEXT NOT NULL UNIQUE,
-    email TEXT NOT NULL UNIQUE
-);
+    social_security_number TEXT NOT NULL,
+    email TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB AUTO_INCREMENT=1;
 

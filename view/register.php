@@ -1,25 +1,8 @@
 <?php
 session_start();
 require_once '../config/database.php';
-
-function encrypt_user_data($data) {
-    $encryption_key = '0123456789abcdef0123456789abcdef'; // 32 chars for AES-256
-    $method = "AES-256-CBC";
-    
-    // Generate a random IV
-    $iv = openssl_random_pseudo_bytes(16);
-    
-    $encrypted = openssl_encrypt(
-        $data,
-        $method,
-        $encryption_key,
-        OPENSSL_RAW_DATA,
-        $iv
-    );
-    
-    // Combine IV and encrypted data
-    return base64_encode($iv . $encrypted);
-}
+require_once '../security/ecc_encryption.php';
+require_once '../security/key_management.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'];
@@ -30,28 +13,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $social_security_number = $_POST['social_security_number'];
     $email = $_POST['email'];
 
-    // Encrypt sensitive data
-    $encrypted_name = encrypt_user_data($name);
-    $encrypted_phone_number = encrypt_user_data($phone_number);
-    $encrypted_address = encrypt_user_data($address);
-    $encrypted_social_security_number = encrypt_user_data($social_security_number);
-    $encrypted_email = encrypt_user_data($email);
-
     try {
-        $stmt = $pdo->prepare("INSERT INTO users (username, password, name, phone_number, address, social_security_number, email) VALUES (:username, :password, :name, :phone_number, :address, :social_security_number, :email)");
+        // First insert the user to get the user ID
+        $stmt = $pdo->prepare("INSERT INTO users (username, password) VALUES (:username, :password)");
         $stmt->execute([
             'username' => $username,
-            'password' => $password,
+            'password' => $password
+        ]);
+        
+        $userId = $pdo->lastInsertId();
+        
+        // Generate ECC keys for the user
+        $keyManager = new KeyManagement();
+        $keyPair = $keyManager->generateUserKeys($userId);
+        
+        // Initialize ECC encryption
+        $ecc = new ECCEncryption();
+        
+        // Encrypt sensitive data with user's public key
+        $encrypted_name = $ecc->encrypt($name, $keyPair['public']);
+        $encrypted_phone_number = $ecc->encrypt($phone_number, $keyPair['public']);
+        $encrypted_address = $ecc->encrypt($address, $keyPair['public']);
+        $encrypted_social_security_number = $ecc->encrypt($social_security_number, $keyPair['public']);
+        $encrypted_email = $ecc->encrypt($email, $keyPair['public']);
+        
+        // Update user record with encrypted data
+        $stmt = $pdo->prepare("UPDATE users SET 
+            name = :name,
+            phone_number = :phone_number,
+            address = :address,
+            social_security_number = :social_security_number,
+            email = :email
+            WHERE id = :id");
+            
+        $stmt->execute([
+            'id' => $userId,
             'name' => $encrypted_name,
             'phone_number' => $encrypted_phone_number,
             'address' => $encrypted_address,
             'social_security_number' => $encrypted_social_security_number,
             'email' => $encrypted_email
         ]);
+        
         header('Location: login.php');
         exit();
     } catch (Exception $e) {
-        $error = "Error: " . $e->getMessage();
+        error_log("Registration error: " . $e->getMessage());
+        $error = "Error during registration: " . $e->getMessage();
     }
 }
 ?>

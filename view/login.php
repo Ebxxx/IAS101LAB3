@@ -1,7 +1,8 @@
 <?php
 session_start();
 require_once '../config/database.php';
-require_once '../security/decrypt_user_data.php';
+require_once '../security/ecc_encryption.php';
+require_once '../security/key_management.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'];
@@ -16,33 +17,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             
-            // Decrypt sensitive data
-            $_SESSION['name'] = decrypt_user_data($user['name']);
-            $_SESSION['phone_number'] = decrypt_user_data($user['phone_number']);
-            $_SESSION['address'] = decrypt_user_data($user['address']);
-            $_SESSION['social_security_number'] = decrypt_user_data($user['social_security_number']);
-            $_SESSION['email'] = decrypt_user_data($user['email']);
-
-            if ($_SESSION['name'] === false || $_SESSION['phone_number'] === false || 
-                $_SESSION['address'] === false || $_SESSION['social_security_number'] === false || 
-                $_SESSION['email'] === false) {
-                error_log("Decryption failed for user: " . $username);
-                if ($_SESSION['name'] === false) error_log("Name decryption failed");
-                if ($_SESSION['phone_number'] === false) error_log("Phone number decryption failed");
-                if ($_SESSION['address'] === false) error_log("Address decryption failed");
-                if ($_SESSION['social_security_number'] === false) error_log("SSN decryption failed");
-                if ($_SESSION['email'] === false) error_log("Email decryption failed");
-                $error = "Error decrypting user data. Please contact administrator.";
-            } else {
+            // Initialize ECC decryption
+            $keyManager = new KeyManagement();
+            $privateKey = $keyManager->getUserPrivateKey($user['id']);
+            $ecc = new ECCEncryption();
+            
+            try {
+                // Decrypt sensitive data
+                $_SESSION['name'] = $ecc->decrypt($user['name'], $privateKey);
+                $_SESSION['phone_number'] = $ecc->decrypt($user['phone_number'], $privateKey);
+                $_SESSION['address'] = $ecc->decrypt($user['address'], $privateKey);
+                $_SESSION['social_security_number'] = $ecc->decrypt($user['social_security_number'], $privateKey);
+                $_SESSION['email'] = $ecc->decrypt($user['email'], $privateKey);
+                
                 header('Location: dashboard.php');
                 exit();
+            } catch (Exception $e) {
+                error_log("Decryption error for user {$user['id']}: " . $e->getMessage());
+                $error = "Error decrypting user data. Please contact administrator.";
             }
         } else {
             $error = "Invalid username or password.";
         }
     } catch (Exception $e) {
         error_log("Login error: " . $e->getMessage());
-        $error = "Error: " . $e->getMessage();
+        $error = "Error during login: " . $e->getMessage();
     }
 }
 ?>

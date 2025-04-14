@@ -18,11 +18,31 @@ A PHP-based web application that demonstrates secure handling of sensitive user 
 ## Security Implementation
 
 ### Encryption
-- **Method**: AES-256-CBC (Advanced Encryption Standard)
-- **Key Length**: 256-bit
-- **Mode**: Cipher Block Chaining (CBC)
-- **IV Handling**: Unique IV for each encrypted field
-- **Data Format**: Base64 encoded (IV + encrypted data)
+- **Methods**:
+  - **AES-256-CBC** (Advanced Encryption Standard)
+    - **Key Length**: 256-bit
+    - **Mode**: Cipher Block Chaining (CBC)
+    - **IV Handling**: Unique IV for each encrypted field
+    - **Data Format**: Base64 encoded (IV + encrypted data)
+  - **AES-GCM** (Galois/Counter Mode)
+    - **Key Length**: 256-bit
+    - **Mode**: Galois/Counter Mode
+    - **IV Handling**: Unique IV for each encrypted field
+    - **Data Format**: Base64 encoded (IV + encrypted data)
+  - **ChaCha20**
+    - **Key Length**: 256-bit
+    - **Mode**: Stream Cipher
+    - **IV Handling**: Unique IV for each encrypted field
+    - **Data Format**: Base64 encoded (IV + encrypted data)
+  - **ECC** (Elliptic Curve Cryptography)
+    - **Curve**: secp256k1
+    - **Key Length**: 256-bit
+    - **Data Format**: Base64 encoded (encrypted data)
+
+### Key Management
+- **Key Storage**: Secure key management using `key_management.php`
+- **Key Rotation**: Regular key rotation to enhance security
+- **Environment Variables**: Use environment variables for key storage in production
 
 ### Password Security
 - Passwords are hashed using PHP's `password_hash()` with BCRYPT
@@ -63,8 +83,12 @@ CREATE TABLE users (
 ├── config/
 │   ├── database.php
 │   └── user_data.sql
-├── encryption/
-│   └── decrypt_user_data.php
+├── security/
+│   ├── key_management.php
+│   ├── decrypt_user_data.php
+│   ├── ecc_encryption.php
+│   ├── chacha20.php
+│   └── aes_gcm.php
 ├── view/
 │   ├── dashboard.php
 │   ├── login.php
@@ -107,4 +131,4 @@ Feel free to submit issues and enhancement requests.
 
 ## Disclaimer
 
-This is a demonstration project and should not be used as-is in a production environment without proper security review and enhancements. 
+This is a demonstration project and should not be used as-is in a production environment without proper security review and enhancements.

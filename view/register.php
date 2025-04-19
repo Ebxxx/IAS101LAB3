@@ -3,6 +3,7 @@ session_start();
 require_once '../config/database.php';
 require_once '../security/ecc_encryption.php';
 require_once '../security/key_management.php';
+require_once '../security/ntru_encryption.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'];
@@ -23,19 +24,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $userId = $pdo->lastInsertId();
         
-        // Generate ECC keys for the user
+        // Generate NTRU keys for the user
         $keyManager = new KeyManagement();
         $keyPair = $keyManager->generateUserKeys($userId);
         
-        // Initialize ECC encryption
-        $ecc = new ECCEncryption();
+        // Initialize NTRU encryption
+        $ntru = new NTRUEncryption();
         
         // Encrypt sensitive data with user's public key
-        $encrypted_name = $ecc->encrypt($name, $keyPair['public']);
-        $encrypted_phone_number = $ecc->encrypt($phone_number, $keyPair['public']);
-        $encrypted_address = $ecc->encrypt($address, $keyPair['public']);
-        $encrypted_social_security_number = $ecc->encrypt($social_security_number, $keyPair['public']);
-        $encrypted_email = $ecc->encrypt($email, $keyPair['public']);
+        $encrypted_name = $ntru->encrypt($name, $keyPair['public']);
+        $encrypted_phone_number = $ntru->encrypt($phone_number, $keyPair['public']);
+        $encrypted_address = $ntru->encrypt($address, $keyPair['public']);
+        $encrypted_social_security_number = $ntru->encrypt($social_security_number, $keyPair['public']);
+        $encrypted_email = $ntru->encrypt($email, $keyPair['public']);
         
         // Update user record with encrypted data
         $stmt = $pdo->prepare("UPDATE users SET 

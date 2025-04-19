@@ -1,5 +1,6 @@
 <?php
 
+
 class ECCEncryption {
     private $cipher = 'AES-256-CBC';
     

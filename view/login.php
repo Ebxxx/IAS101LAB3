@@ -3,6 +3,7 @@ session_start();
 require_once '../config/database.php';
 require_once '../security/ecc_encryption.php';
 require_once '../security/key_management.php';
+require_once '../security/ntru_encryption.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'];
@@ -30,8 +31,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['social_security_number'] = $ecc->decrypt($user['social_security_number'], $privateKey);
                 $_SESSION['email'] = $ecc->decrypt($user['email'], $privateKey);
                 
-                header('Location: dashboard.php');
-                exit();
+                // Initialize NTRU decryption
+                $ntru = new NTRUEncryption();
+                
+                try {
+                    // Decrypt sensitive data using NTRU
+                    $_SESSION['name'] = $ntru->decrypt($user['name'], $privateKey);
+                    $_SESSION['phone_number'] = $ntru->decrypt($user['phone_number'], $privateKey);
+                    $_SESSION['address'] = $ntru->decrypt($user['address'], $privateKey);
+                    $_SESSION['social_security_number'] = $ntru->decrypt($user['social_security_number'], $privateKey);
+                    $_SESSION['email'] = $ntru->decrypt($user['email'], $privateKey);
+                    
+                    header('Location: dashboard.php');
+                    exit();
+                } catch (Exception $e) {
+                    error_log("Decryption error for user {$user['id']}: " . $e->getMessage());
+                    $error = "Error decrypting user data. Please contact administrator.";
+                }
             } catch (Exception $e) {
                 error_log("Decryption error for user {$user['id']}: " . $e->getMessage());
                 $error = "Error decrypting user data. Please contact administrator.";

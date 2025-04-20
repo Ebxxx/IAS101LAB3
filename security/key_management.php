@@ -7,10 +7,10 @@ class KeyManagement {
     private $ntru;
     private $ecc;
     
-    public function __construct($keyStorePath = '../keys') {
+    public function __construct($keyStorePath = '../keys', $cipherMode = 'AES-256-CBC') {
         $this->keyStorePath = $keyStorePath;
         $this->ntru = new NTRUEncryption();
-        $this->ecc = new ECCEncryption();
+        $this->ecc = new ECCEncryption($cipherMode);
         
         // Ensure the key store directory exists and is writable
         if (!file_exists($this->keyStorePath)) {

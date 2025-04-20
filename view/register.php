@@ -26,17 +26,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Generate NTRU keys for the user
         $keyManager = new KeyManagement();
-        $keyPair = $keyManager->generateUserKeys($userId);
+        $keys = $keyManager->generateUserKeys($userId);
         
-        // Initialize NTRU encryption
+        // Use NTRU for highly sensitive data
         $ntru = new NTRUEncryption();
+        $encryptedSSN = $ntru->encrypt($social_security_number, $keys['ntru']['public']);
+        $encryptedPII = $ntru->encrypt($name, $keys['ntru']['public']);
+        $encryptedAddress = $ntru->encrypt($address, $keys['ntru']['public']);
         
-        // Encrypt sensitive data with user's public key
-        $encrypted_name = $ntru->encrypt($name, $keyPair['public']);
-        $encrypted_phone_number = $ntru->encrypt($phone_number, $keyPair['public']);
-        $encrypted_address = $ntru->encrypt($address, $keyPair['public']);
-        $encrypted_social_security_number = $ntru->encrypt($social_security_number, $keyPair['public']);
-        $encrypted_email = $ntru->encrypt($email, $keyPair['public']);
+        // Use ECC for less sensitive data or session-based data
+        $ecc = new ECCEncryption();
+        $encryptedEmail = $ecc->encrypt($email, $keys['ecc']['public']);
+        $encryptedPreferences = $ecc->encrypt($phone_number, $keys['ecc']['public']);
         
         // Update user record with encrypted data
         $stmt = $pdo->prepare("UPDATE users SET 
@@ -49,11 +50,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
         $stmt->execute([
             'id' => $userId,
-            'name' => $encrypted_name,
-            'phone_number' => $encrypted_phone_number,
-            'address' => $encrypted_address,
-            'social_security_number' => $encrypted_social_security_number,
-            'email' => $encrypted_email
+            'name' => $encryptedPII,
+            'phone_number' => $encryptedPreferences,
+            'address' => $encryptedAddress,
+            'social_security_number' => $encryptedSSN,
+            'email' => $encryptedEmail
         ]);
         
         header('Location: login.php');

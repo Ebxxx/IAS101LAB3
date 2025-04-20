@@ -1,12 +1,16 @@
 <?php
 require_once 'ntru_encryption.php';
+require_once 'ecc_encryption.php';
 
 class KeyManagement {
     private $keyStorePath;
     private $ntru;
+    private $ecc;
     
     public function __construct($keyStorePath = '../keys') {
         $this->keyStorePath = $keyStorePath;
+        $this->ntru = new NTRUEncryption();
+        $this->ecc = new ECCEncryption();
         
         // Ensure the key store directory exists and is writable
         if (!file_exists($this->keyStorePath)) {
@@ -18,71 +22,85 @@ class KeyManagement {
         if (!is_writable($this->keyStorePath)) {
             throw new Exception("Key store directory is not writable: " . $this->keyStorePath);
         }
-        
-        $this->ntru = new NTRUEncryption();
     }
     
     // Generate and store new key pair for a user
     public function generateUserKeys($userId) {
         try {
-            // Generate the NTRU key pair
-            $keyPair = $this->ntru->generateKeyPair();
+            // Generate both NTRU and ECC key pairs
+            $ntruKeyPair = $this->ntru->generateKeyPair();
+            $eccKeyPair = $this->ecc->generateKeyPair();
             
-            // Store private key with enhanced security
-            $privateKeyPath = $this->getPrivateKeyPath($userId);
-            if (file_put_contents($privateKeyPath, $keyPair['private'], LOCK_EX) === false) {
-                throw new Exception("Failed to write private key file");
-            }
-            chmod($privateKeyPath, 0600); // Restrictive permissions
+            // Store NTRU keys
+            $this->storeKey($userId, 'ntru_private', $ntruKeyPair['privateKey']);
+            $this->storeKey($userId, 'ntru_public', $ntruKeyPair['publicKey']);
             
-            // Store public key
-            $publicKeyPath = $this->getPublicKeyPath($userId);
-            if (file_put_contents($publicKeyPath, $keyPair['public'], LOCK_EX) === false) {
-                @unlink($privateKeyPath);
-                throw new Exception("Failed to write public key file");
-            }
+            // Store ECC keys
+            $this->storeKey($userId, 'ecc_private', $eccKeyPair['private']);
+            $this->storeKey($userId, 'ecc_public', $eccKeyPair['public']);
             
-            return $keyPair;
+            return [
+                'ntru' => [
+                    'public' => $ntruKeyPair['publicKey'],
+                    'private' => $ntruKeyPair['privateKey']
+                ],
+                'ecc' => [
+                    'public' => $eccKeyPair['public'],
+                    'private' => $eccKeyPair['private']
+                ]
+            ];
         } catch (Exception $e) {
             // Clean up any files that might have been created
-            @unlink($this->getPrivateKeyPath($userId));
-            @unlink($this->getPublicKeyPath($userId));
+            @unlink($this->getKeyPath($userId, 'ntru_private'));
+            @unlink($this->getKeyPath($userId, 'ntru_public'));
+            @unlink($this->getKeyPath($userId, 'ecc_private'));
+            @unlink($this->getKeyPath($userId, 'ecc_public'));
             throw new Exception("Failed to generate and store keys: " . $e->getMessage());
         }
     }
     
-    // Get user's public key
-    public function getUserPublicKey($userId) {
-        $publicKeyPath = $this->getPublicKeyPath($userId);
-        if (!file_exists($publicKeyPath)) {
-            throw new Exception("Public key not found for user: " . $userId);
+    private function storeKey($userId, $type, $key) {
+        $filename = $this->getKeyPath($userId, $type);
+        // JSON encode NTRU keys before storing
+        if (strpos($type, 'ntru_') === 0) {
+            $key = json_encode($key);
         }
-        $publicKey = file_get_contents($publicKeyPath);
-        if ($publicKey === false) {
-            throw new Exception("Failed to read public key file: " . $publicKeyPath);
+        if (file_put_contents($filename, $key, LOCK_EX) === false) {
+            throw new Exception("Failed to write $type key file");
         }
-        return $publicKey;
+        chmod($filename, 0600);
     }
     
-    // Get user's private key
-    public function getUserPrivateKey($userId) {
-        $privateKeyPath = $this->getPrivateKeyPath($userId);
-        if (!file_exists($privateKeyPath)) {
-            throw new Exception("Private key not found for user: " . $userId);
-        }
-        $privateKey = file_get_contents($privateKeyPath);
-        if ($privateKey === false) {
-            throw new Exception("Failed to read private key file: " . $privateKeyPath);
-        }
-        return $privateKey;
+    private function getKeyPath($userId, $type) {
+        return $this->keyStorePath . DIRECTORY_SEPARATOR . $type . '_' . $userId . '.pem';
     }
     
-    private function getPrivateKeyPath($userId) {
-        return $this->keyStorePath . DIRECTORY_SEPARATOR . 'private_' . $userId . '.pem';
+    public function getNTRUKeys($userId) {
+        $publicKey = file_get_contents($this->getKeyPath($userId, 'ntru_public'));
+        $privateKey = file_get_contents($this->getKeyPath($userId, 'ntru_private'));
+        
+        if ($publicKey === false || $privateKey === false) {
+            throw new Exception("Failed to read NTRU keys for user: " . $userId);
+        }
+        
+        return [
+            'public' => json_decode($publicKey, true),
+            'private' => json_decode($privateKey, true)
+        ];
     }
     
-    private function getPublicKeyPath($userId) {
-        return $this->keyStorePath . DIRECTORY_SEPARATOR . 'public_' . $userId . '.pem';
+    public function getECCKeys($userId) {
+        $publicKey = file_get_contents($this->getKeyPath($userId, 'ecc_public'));
+        $privateKey = file_get_contents($this->getKeyPath($userId, 'ecc_private'));
+        
+        if ($publicKey === false || $privateKey === false) {
+            throw new Exception("Failed to read ECC keys for user: " . $userId);
+        }
+        
+        return [
+            'public' => $publicKey,
+            'private' => $privateKey
+        ];
     }
 }
 ?> 

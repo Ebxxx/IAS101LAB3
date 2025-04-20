@@ -1,9 +1,9 @@
 <?php
 session_start();
 require_once '../config/database.php';
-require_once '../security/ecc_encryption.php';
-require_once '../security/key_management.php';
 require_once '../security/ntru_encryption.php';
+require_once '../security/key_management.php';
+require_once '../security/ecc_encryption.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'];
@@ -18,39 +18,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             
-            // Initialize ECC decryption
+            // Initialize key management and encryption
             $keyManager = new KeyManagement();
-            $privateKey = $keyManager->getUserPrivateKey($user['id']);
+            $ntru = new NTRUEncryption();
             $ecc = new ECCEncryption();
             
             try {
-                // Decrypt sensitive data
-                $_SESSION['name'] = $ecc->decrypt($user['name'], $privateKey);
-                $_SESSION['phone_number'] = $ecc->decrypt($user['phone_number'], $privateKey);
-                $_SESSION['address'] = $ecc->decrypt($user['address'], $privateKey);
-                $_SESSION['social_security_number'] = $ecc->decrypt($user['social_security_number'], $privateKey);
-                $_SESSION['email'] = $ecc->decrypt($user['email'], $privateKey);
+                // Get keys
+                $ntruKeys = $keyManager->getNTRUKeys($user['id']);
+                $eccKeys = $keyManager->getECCKeys($user['id']);
                 
-                // Initialize NTRU decryption
-                $ntru = new NTRUEncryption();
-                
-                try {
-                    // Decrypt sensitive data using NTRU
-                    $_SESSION['name'] = $ntru->decrypt($user['name'], $privateKey);
-                    $_SESSION['phone_number'] = $ntru->decrypt($user['phone_number'], $privateKey);
-                    $_SESSION['address'] = $ntru->decrypt($user['address'], $privateKey);
-                    $_SESSION['social_security_number'] = $ntru->decrypt($user['social_security_number'], $privateKey);
-                    $_SESSION['email'] = $ntru->decrypt($user['email'], $privateKey);
-                    
-                    header('Location: dashboard.php');
-                    exit();
-                } catch (Exception $e) {
-                    error_log("Decryption error for user {$user['id']}: " . $e->getMessage());
-                    $error = "Error decrypting user data. Please contact administrator.";
+                // Decrypt NTRU-encrypted data
+                if (!empty($user['social_security_number'])) {
+                    try {
+                        $_SESSION['social_security_number'] = $ntru->decrypt($user['social_security_number'], $ntruKeys['private']);
+                    } catch (Exception $e) {
+                        error_log("Failed to decrypt SSN: " . $e->getMessage());
+                    }
                 }
+                if (!empty($user['name'])) {
+                    try {
+                        $_SESSION['name'] = $ntru->decrypt($user['name'], $ntruKeys['private']);
+                    } catch (Exception $e) {
+                        error_log("Failed to decrypt name: " . $e->getMessage());
+                    }
+                }
+                if (!empty($user['address'])) {
+                    try {
+                        $_SESSION['address'] = $ntru->decrypt($user['address'], $ntruKeys['private']);
+                    } catch (Exception $e) {
+                        error_log("Failed to decrypt address: " . $e->getMessage());
+                    }
+                }
+                
+                // Decrypt ECC-encrypted data
+                if (!empty($user['email'])) {
+                    $_SESSION['email'] = $ecc->decrypt($user['email'], $eccKeys['private']);
+                }
+                if (!empty($user['phone_number'])) {
+                    $_SESSION['phone_number'] = $ecc->decrypt($user['phone_number'], $eccKeys['private']);
+                }
+                
+                header('Location: dashboard.php');
+                exit();
             } catch (Exception $e) {
-                error_log("Decryption error for user {$user['id']}: " . $e->getMessage());
-                $error = "Error decrypting user data. Please contact administrator.";
+                error_log("Decryption error: " . $e->getMessage());
+                $error = "Error decrypting user data: " . $e->getMessage();
             }
         } else {
             $error = "Invalid username or password.";

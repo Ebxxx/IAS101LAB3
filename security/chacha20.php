@@ -1,5 +1,6 @@
 <?php
-
+// This code is implemented but not yet integrated with the advanced asymetric encryiption.
+// This is a symetric ecnryption.
 function chacha20_encrypt($plaintext, $key, $nonce) {
     if (strlen($key) !== 32) {
         throw new Exception("Key must be 32 bytes long.");
@@ -19,5 +20,4 @@ function chacha20_decrypt($ciphertext, $key, $nonce) {
     }
     return openssl_decrypt($ciphertext, 'chacha20', $key, OPENSSL_RAW_DATA, $nonce);
 }
-
 ?> 

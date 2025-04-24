@@ -1,9 +1,9 @@
 <?php
 session_start();
 require_once '../config/database.php';
-require_once '../security/ecc_encryption.php';
+require_once '../security/asymmetric/ecc_encryption.php';
 require_once '../security/key_management.php';
-require_once '../security/ntru_encryption.php';
+require_once '../security/asymmetric/ntru_encryption.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'];

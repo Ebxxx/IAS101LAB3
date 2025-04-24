@@ -1,6 +1,6 @@
 <?php
-require_once 'aes_gcm.php';
-require_once 'chacha20.php';
+require_once __DIR__ . '/../symmetric/aes_gcm.php';
+require_once __DIR__ . '/../symmetric/chacha20.php';
 
 class ECCEncryption {
     // Add new cipher options

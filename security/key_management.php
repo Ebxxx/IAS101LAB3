@@ -1,16 +1,19 @@
 <?php
 require_once 'asymmetric/ntru_encryption.php';
 require_once 'asymmetric/ecc_encryption.php';
+require_once 'homomorphic/paillier_encryption.php';
 
 class KeyManagement {
     private $keyStorePath;
     private $ntru;
     private $ecc;
+    private $paillier;
     
     public function __construct($keyStorePath = '../keys', $cipherMode = 'AES-256-CBC') {
         $this->keyStorePath = $keyStorePath;
         $this->ntru = new NTRUEncryption();
         $this->ecc = new ECCEncryption($cipherMode);
+        $this->paillier = new PaillierEncryption();
         
         // Ensure the key store directory exists and is writable
         if (!file_exists($this->keyStorePath)) {
@@ -27,17 +30,37 @@ class KeyManagement {
     // Generate and store new key pair for a user
     public function generateUserKeys($userId) {
         try {
-            // Generate both NTRU and ECC key pairs
+            // Generate NTRU, ECC, and Paillier key pairs
             $ntruKeyPair = $this->ntru->generateKeyPair();
             $eccKeyPair = $this->ecc->generateKeyPair();
             
-            // Store NTRU keys
+            // Generate Paillier keys
+            $p = gmp_nextprime(gmp_random_bits(512));
+            $q = gmp_nextprime(gmp_random_bits(512));
+            $n = gmp_mul($p, $q);
+            $n2 = gmp_pow($n, 2);
+            $lambda = gmp_lcm(gmp_sub($p, 1), gmp_sub($q, 1));
+            $g = gmp_add($n, 1);
+            $mu = $this->paillier->modInverse($lambda, $n);
+            
+            $paillierKeyPair = [
+                'public' => [
+                    'n' => gmp_strval($n),
+                    'g' => gmp_strval($g)
+                ],
+                'private' => [
+                    'lambda' => gmp_strval($lambda),
+                    'mu' => gmp_strval($mu)
+                ]
+            ];
+            
+            // Store all keys
             $this->storeKey($userId, 'ntru_private', $ntruKeyPair['privateKey']);
             $this->storeKey($userId, 'ntru_public', $ntruKeyPair['publicKey']);
-            
-            // Store ECC keys
             $this->storeKey($userId, 'ecc_private', $eccKeyPair['private']);
             $this->storeKey($userId, 'ecc_public', $eccKeyPair['public']);
+            $this->storeKey($userId, 'paillier_private', $paillierKeyPair['private']);
+            $this->storeKey($userId, 'paillier_public', $paillierKeyPair['public']);
             
             return [
                 'ntru' => [
@@ -47,7 +70,8 @@ class KeyManagement {
                 'ecc' => [
                     'public' => $eccKeyPair['public'],
                     'private' => $eccKeyPair['private']
-                ]
+                ],
+                'paillier' => $paillierKeyPair
             ];
         } catch (Exception $e) {
             // Clean up any files that might have been created
@@ -55,14 +79,16 @@ class KeyManagement {
             @unlink($this->getKeyPath($userId, 'ntru_public'));
             @unlink($this->getKeyPath($userId, 'ecc_private'));
             @unlink($this->getKeyPath($userId, 'ecc_public'));
+            @unlink($this->getKeyPath($userId, 'paillier_private'));
+            @unlink($this->getKeyPath($userId, 'paillier_public'));
             throw new Exception("Failed to generate and store keys: " . $e->getMessage());
         }
     }
     
     private function storeKey($userId, $type, $key) {
         $filename = $this->getKeyPath($userId, $type);
-        // JSON encode NTRU keys before storing
-        if (strpos($type, 'ntru_') === 0) {
+        // JSON encode array keys before storing
+        if (is_array($key)) {
             $key = json_encode($key);
         }
         if (file_put_contents($filename, $key, LOCK_EX) === false) {

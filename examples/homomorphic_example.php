@@ -1,9 +1,9 @@
 <?php
-require_once '../security/key_management.php';
+require_once '../security/homomorphic/homomorphic_key_management.php';
 require_once '../security/homomorphic/paillier_encryption.php';
 
-// Initialize key management
-$keyManager = new KeyManagement();
+// Initialize homomorphic key management
+$keyManager = new HomomorphicKeyManagement();
 
 // Generate keys for a user
 $userId = 1;
@@ -13,18 +13,18 @@ $keys = $keyManager->generateUserKeys($userId);
 $paillier = new PaillierEncryption();
 
 // Example values
-$value1 = 278;
+$value1 = 10;
 $value2 = 100;
 
 // Encrypt values
-$encrypted1 = $paillier->encrypt($value1, $keys['paillier']['public']);
-$encrypted2 = $paillier->encrypt($value2, $keys['paillier']['public']);
+$encrypted1 = $paillier->encrypt($value1, $keys['public']);
+$encrypted2 = $paillier->encrypt($value2, $keys['public']);
 
 // Perform homomorphic addition
-$encryptedSum = $paillier->addEncrypted($encrypted1, $encrypted2, $keys['paillier']['public']);
+$encryptedSum = $paillier->addEncrypted($encrypted1, $encrypted2, $keys['public']);
 
 // Decrypt the result
-$sum = $paillier->decrypt($encryptedSum, $keys['paillier']['private'], $keys['paillier']['public']);
+$sum = $paillier->decrypt($encryptedSum, $keys['private'], $keys['public']);
 
 echo "Value 1: $value1\n";
 echo "Value 2: $value2\n";

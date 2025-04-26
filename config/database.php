@@ -1,14 +1,15 @@
 <?php
-$db_host = 'localhost:3307';
-$db_name = 'user_data';
-$db_user = 'root';
-$db_pass = '';
+// Database configuration constants
+define('DB_HOST', 'localhost:3307');
+define('DB_NAME', 'user_data');
+define('DB_USER', 'root');
+define('DB_PASS', '');
 
 try {
-    $pdo = new PDO("mysql:host=$db_host;dbname=$db_name", $db_user, $db_pass);
+    $pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME, DB_USER, DB_PASS);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
-    $conn = mysqli_connect($db_host, $db_user, $db_pass, $db_name);
+    $conn = mysqli_connect(DB_HOST, DB_USER, DB_PASS, DB_NAME);
     if (!$conn) {
         throw new Exception("mysqli connection failed: " . mysqli_connect_error());
     }

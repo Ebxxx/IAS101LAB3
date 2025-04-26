@@ -70,31 +70,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Register</title>
-    <link rel="stylesheet" href="app/styles.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register | Secure App</title>
+    <link rel="stylesheet" href="app/frontpage.css">
 </head>
 <body>
     <div class="container">
-        <h1>Register</h1>
-        <?php if (isset($error)) echo "<p class='error'>$error</p>"; ?>
+        <h1>Input your personal information</h1>
+        
+        <?php if (isset($error)): ?>
+            <div class="error"><?php echo htmlspecialchars($error); ?></div>
+        <?php endif; ?>
+        
         <form method="POST" action="">
-            <label for="username">Username:</label>
-            <input type="text" id="username" name="username" required><br>
-            <label for="password">Password:</label>
-            <input type="password" id="password" name="password" required><br>
-            <label for="name">Name:</label>
-            <input type="text" id="name" name="name" required><br>
-            <label for="phone_number">Phone Number:</label>
-            <input type="text" id="phone_number" name="phone_number" required><br>
-            <label for="address">Address:</label>
-            <textarea id="address" name="address" required></textarea><br>
-            <label for="social_security_number">Social Security Number:</label>
-            <input type="text" id="social_security_number" name="social_security_number" required><br>
-            <label for="email">Email:</label>
-            <input type="email" id="email" name="email" required><br>
-            <button type="submit">Register</button>
+            <div class="field-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" placeholder="Choose a username" required>
+            </div>
+            
+            <div class="field-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Choose a strong password" required>
+            </div>
+            
+            <div class="field-group">
+                <label for="name">Full Name</label>
+                <input type="text" id="name" name="name" placeholder="Enter your full name" required>
+            </div>
+            
+            <div class="field-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" placeholder="Enter your email address" required>
+            </div>
+            
+            <div class="field-group">
+                <label for="phone_number">Phone Number</label>
+                <input type="tel" id="phone_number" name="phone_number" placeholder="Enter your phone number" required>
+            </div>
+            
+            <div class="field-group address-field">
+                <label for="address">Address</label>
+                <textarea id="address" name="address" placeholder="Enter your full address" required></textarea>
+            </div>
+            
+            <div class="field-group">
+                <label for="social_security_number">Social Security Number</label>
+                <input type="text" id="social_security_number" name="social_security_number" 
+                       class="sensitive-field" placeholder="XXX-XX-XXXX" required>
+            </div>
+            
+            <button type="submit">Submit</button>
         </form>
+        
         <p>Already have an account? <a href="login.php">Login here</a></p>
+        
+        <hr>
+        
+        <div class="security-info">
+            Your personal information is protected with advanced encryption technologies
+        </div>
     </div>
 </body>
-</html> 
+</html>

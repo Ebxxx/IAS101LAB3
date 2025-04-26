@@ -12,3 +12,15 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB AUTO_INCREMENT=1;
 
+DROP TABLE IF EXISTS salary_data;
+
+CREATE TABLE salary_data (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    base_salary TEXT NOT NULL,
+    bonus TEXT NOT NULL,
+    tax_rate TEXT NOT NULL,
+    encrypted_total TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+) ENGINE=InnoDB AUTO_INCREMENT=1;
+

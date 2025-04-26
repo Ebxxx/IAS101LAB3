@@ -74,26 +74,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Login</title>
-    <link rel="stylesheet" href="app/styles.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Secure App</title>
+    <link rel="stylesheet" href="app/frontpage.css">
 </head>
 <body>
     <div class="container">
-        <h1>Login</h1>
-        <?php if (isset($error)) echo "<p class='error'>$error</p>"; ?>
+        <h1>Welcome Back</h1>
+        
+        <?php if (isset($error)): ?>
+            <div class="error"><?php echo htmlspecialchars($error); ?></div>
+        <?php endif; ?>
+        
         <form method="POST" action="">
-            <label for="username">Username:</label>
-            <input type="text" id="username" name="username" required><br>
-            <label for="password">Password:</label>
-            <input type="password" id="password" name="password" required><br>
-            <button type="submit">Login</button>
+            <div class="field-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" placeholder="Enter your username" required>
+            </div>
+            
+            <div class="field-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+            </div>
+            
+            <button type="submit">Log In</button>
         </form>
-        <p>Don't have an account? <a href="register.php">Register here</a></p>
+        
+        <p>Don't have an account? <a href="register.php">Registration</a></p>
+        
+        <hr>
+        
+        <div class="security-info">
+            This application uses advanced encryption to protect your personal information
+        </div>
     </div>
 </body>
-</html> 
+</html>

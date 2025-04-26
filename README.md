@@ -1,6 +1,6 @@
 # Secure User Data Management System
 
-A PHP-based web application that demonstrates secure handling of sensitive user data using encryption. The system implements secure user registration, login, and data display functionality with encrypted data storage.
+A PHP-based web application that demonstrates secure handling of sensitive user data using multiple encryption methods. The system implements secure user registration, login, and data display functionality with encrypted data storage.
 
 ## Features
 
@@ -17,14 +17,9 @@ A PHP-based web application that demonstrates secure handling of sensitive user 
 
 ## Security Implementation
 
-### Encryption
-- **Methods**:
-  - **AES-256-CBC** (Advanced Encryption Standard)
-    - **Key Length**: 256-bit
-    - **Mode**: Cipher Block Chaining (CBC)
-    - **IV Handling**: Unique IV for each encrypted field
-    - **Data Format**: Base64 encoded (IV + encrypted data)
-  - **AES-GCM** (Galois/Counter Mode)
+### Encryption Methods
+- **Symmetric Encryption**:
+  - **AES-256-GCM** (Advanced Encryption Standard)
     - **Key Length**: 256-bit
     - **Mode**: Galois/Counter Mode
     - **IV Handling**: Unique IV for each encrypted field
@@ -34,14 +29,22 @@ A PHP-based web application that demonstrates secure handling of sensitive user 
     - **Mode**: Stream Cipher
     - **IV Handling**: Unique IV for each encrypted field
     - **Data Format**: Base64 encoded (IV + encrypted data)
-  - **ECC** (Elliptic Curve Cryptography)
-    - **Curve**: secp256k1
-    - **Key Length**: 256-bit
+
+- **Asymmetric Encryption**:
+  - **RSA** (Rivest-Shamir-Adleman)
+    - **Key Length**: 2048-bit
+    - **Implementation**: OpenSSL
     - **Data Format**: Base64 encoded (encrypted data)
+  - **NTRU** (Post-Quantum Cryptography)
+    - **Implementation**: Custom NTRU implementation
+    - **Security Level**: Post-quantum resistant
+  - **Paillier** (Homomorphic Encryption)
+    - **Implementation**: Custom Paillier implementation
+    - **Feature**: Supports homomorphic operations
 
 ### Key Management
-- **Key Storage**: Secure key management using `key_management.php`
-- **Key Rotation**: Regular key rotation to enhance security
+- **Key Storage**: Secure key management using dedicated `keys/` directory
+- **Key Generation**: Automatic key pair generation for asymmetric encryption
 - **Environment Variables**: Use environment variables for key storage in production
 
 ### Password Security
@@ -62,21 +65,6 @@ A PHP-based web application that demonstrates secure handling of sensitive user 
 - Apache/Nginx web server
 - XAMPP (recommended for local development)
 
-## Database Structure
-
-```sql
-CREATE TABLE users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    name TEXT NOT NULL,
-    phone_number TEXT NOT NULL,
-    address TEXT NOT NULL,
-    social_security_number TEXT NOT NULL UNIQUE,
-    email TEXT NOT NULL UNIQUE
-);
-```
-
 ## Project Structure
 
 ```
@@ -84,25 +72,34 @@ CREATE TABLE users (
 │   ├── database.php
 │   └── user_data.sql
 ├── security/
-│   ├── key_management.php
-│   ├── decrypt_user_data.php
-│   ├── ecc_encryption.php
-│   ├── chacha20.php
-│   └── aes_gcm.php
+│   ├── asymmetric/
+│   │   ├── ecc_encryption.php
+│   │   ├── ntru_encryption.php
+│   │   └── paillier_encryption.php
+│   ├── symmetric/
+│   |   ├── aes_gcm.php
+│   |   └── chacha20.php
+|   ├── homomorphic
+|   |   ├── homomorphic_key_management.php
+|   |   └── pailler_encryption.php
+|   └── key_management.php
+├── keys/
+│   └── (encryption keys storage)
 ├── view/
+|   ├── app/
+|   |     ├── style.css
 │   ├── dashboard.php
 │   ├── login.php
 │   ├── logout.php
 │   └── register.php
 └── README.md
-```
 
 ## Setup Instructions
 
 1. Clone the repository to your web server directory
 2. Import the database structure using `config/user_data.sql`
 3. Configure database connection in `config/database.php`
-4. Ensure proper file permissions are set
+4. Ensure proper file permissions are set for the `keys/` directory
 5. Access the application through your web browser
 
 ## Security Notes

@@ -7,30 +7,73 @@ class KeyManagement {
     private $ntru;
     private $ecc;
     
-    public function __construct($keyStorePath = '../keys', $cipherMode = 'AES-256-CBC') {
+    public function __construct($keyStorePath = '../keys', $cipherMode = 'AES-256-GCM') {
+        // Convert relative path to absolute path
+        if (!str_starts_with($keyStorePath, '/') && !preg_match('/^[A-Za-z]:\\\/', $keyStorePath)) {
+            $keyStorePath = __DIR__ . DIRECTORY_SEPARATOR . $keyStorePath;
+        }
+        
         $this->keyStorePath = $keyStorePath;
         $this->ntru = new NTRUEncryption();
         $this->ecc = new ECCEncryption($cipherMode);
         
-        // Ensure the key store directory exists and is writable
+        // Create directory with full permissions first
         if (!file_exists($this->keyStorePath)) {
             if (!mkdir($this->keyStorePath, 0777, true)) {
-                throw new Exception("Failed to create key store directory: " . $this->keyStorePath);
+                throw new Exception("Failed to create key store directory at: " . $this->keyStorePath);
             }
+            // On Windows, mkdir ignores permissions, so we need to explicitly set them
+            chmod($this->keyStorePath, 0777);
         }
         
         if (!is_writable($this->keyStorePath)) {
-            throw new Exception("Key store directory is not writable: " . $this->keyStorePath);
+            // Try to make it writable
+            if (!chmod($this->keyStorePath, 0777)) {
+                throw new Exception("Key store directory is not writable and cannot be made writable: " . $this->keyStorePath);
+            }
         }
     }
     
     public function generateUserKeys($userId) {
         try {
-            // Generate NTRU and ECC key pairs
+            // First ensure the key directory exists with proper permissions
+            if (!file_exists($this->keyStorePath)) {
+                if (!mkdir($this->keyStorePath, 0777, true)) {
+                    throw new Exception("Failed to create key directory: " . $this->keyStorePath);
+                }
+            }
+
+            // Generate NTRU key pair first
             $ntruKeyPair = $this->ntru->generateKeyPair();
-            $eccKeyPair = $this->ecc->generateKeyPair();
             
-            $keyPairs = [
+            // Generate ECC key pair with better error handling
+            $eccKeyPair = null;
+            $lastError = null;
+            
+            try {
+                $eccKeyPair = $this->ecc->generateKeyPair();
+            } catch (Exception $e) {
+                error_log("ECC key generation failed: " . $e->getMessage());
+                throw new Exception("Failed to generate ECC keys: " . $e->getMessage());
+            }
+
+            if ($eccKeyPair === null) {
+                throw new Exception("Failed to generate ECC keys: No key pair was generated");
+            }
+
+            // Store keys immediately after generation
+            try {
+                $this->storeKey($userId, 'ntru_private', $ntruKeyPair['privateKey']);
+                $this->storeKey($userId, 'ntru_public', $ntruKeyPair['publicKey']);
+                $this->storeKey($userId, 'ecc_private', $eccKeyPair['private']);
+                $this->storeKey($userId, 'ecc_public', $eccKeyPair['public']);
+            } catch (Exception $e) {
+                // If storing fails, cleanup and throw
+                $this->cleanupKeyFiles($userId);
+                throw new Exception("Failed to store keys: " . $e->getMessage());
+            }
+
+            return [
                 'ntru' => [
                     'public' => $ntruKeyPair['publicKey'],
                     'private' => $ntruKeyPair['privateKey']
@@ -40,20 +83,8 @@ class KeyManagement {
                     'private' => $eccKeyPair['private']
                 ]
             ];
-            
-            // Store NTRU and ECC keys
-            $this->storeKey($userId, 'ntru_private', $ntruKeyPair['privateKey']);
-            $this->storeKey($userId, 'ntru_public', $ntruKeyPair['publicKey']);
-            $this->storeKey($userId, 'ecc_private', $eccKeyPair['private']);
-            $this->storeKey($userId, 'ecc_public', $eccKeyPair['public']);
-            
-            return $keyPairs;
         } catch (Exception $e) {
-            // Clean up any files that might have been created
-            @unlink($this->getKeyPath($userId, 'ntru_private'));
-            @unlink($this->getKeyPath($userId, 'ntru_public'));
-            @unlink($this->getKeyPath($userId, 'ecc_private'));
-            @unlink($this->getKeyPath($userId, 'ecc_public'));
+            $this->cleanupKeyFiles($userId);
             throw new Exception("Failed to generate and store keys: " . $e->getMessage());
         }
     }
@@ -100,6 +131,16 @@ class KeyManagement {
             'public' => $publicKey,
             'private' => $privateKey
         ];
+    }
+
+    private function cleanupKeyFiles($userId) {
+        $keyTypes = ['ntru_private', 'ntru_public', 'ecc_private', 'ecc_public'];
+        foreach ($keyTypes as $type) {
+            $filepath = $this->getKeyPath($userId, $type);
+            if (file_exists($filepath)) {
+                @unlink($filepath);
+            }
+        }
     }
 }
 ?> 

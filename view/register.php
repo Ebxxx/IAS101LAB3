@@ -5,6 +5,10 @@ require_once '../security/asymmetric/ecc_encryption.php';
 require_once '../security/key_management.php';
 require_once '../security/asymmetric/ntru_encryption.php';
 
+// Add this temporarily at the top of register.php to check OpenSSL
+// echo "OpenSSL version: " . OPENSSL_VERSION_TEXT . "<br>";
+// echo "OpenSSL loaded: " . (extension_loaded('openssl') ? 'Yes' : 'No') . "<br>";
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'];
     $password = password_hash($_POST['password'], PASSWORD_BCRYPT);
@@ -24,9 +28,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $userId = $pdo->lastInsertId();
         
-        // Generate NTRU keys for the user
-        $keyManager = new KeyManagement();
-        $keys = $keyManager->generateUserKeys($userId);
+        // Use absolute path for keys directory
+        $keyStorePath = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'keys';
+        $keyManager = new KeyManagement($keyStorePath);
+        
+        try {
+            $keys = $keyManager->generateUserKeys($userId);
+        } catch (Exception $e) {
+            // If key generation fails, delete the user and throw error
+            $stmt = $pdo->prepare("DELETE FROM users WHERE id = :id");
+            $stmt->execute(['id' => $userId]);
+            throw new Exception("Key generation failed: " . $e->getMessage());
+        }
         
         // Use NTRU for highly sensitive data
         $ntru = new NTRUEncryption();

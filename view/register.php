@@ -4,6 +4,7 @@ require_once '../config/database.php';
 require_once '../security/asymmetric/ecc_encryption.php';
 require_once '../security/key_management.php';
 require_once '../security/asymmetric/ntru_encryption.php';
+require_once '../security/tls/tls_handshake.php';
 
 // Add this temporarily at the top of register.php to check OpenSSL
 // echo "OpenSSL version: " . OPENSSL_VERSION_TEXT . "<br>";
@@ -19,6 +20,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = $_POST['email'];
 
     try {
+        // Initialize TLS handshake
+        $tls = new TLSHandshake();
+        $context = $tls->startHandshake();
+        $socket = $tls->secureConnection('localhost', 8443, $context);
+
+        // Send a test message to the server
+        fwrite($socket, "Hello from register.php\n");
+
+        // Read the server's response
+        $response = fread($socket, 1024);
+        echo "Server response: $response\n";
+
+        // Close the connection
+        fclose($socket);
+
         // First insert the user to get the user ID
         $stmt = $pdo->prepare("INSERT INTO users (username, password) VALUES (:username, :password)");
         $stmt->execute([

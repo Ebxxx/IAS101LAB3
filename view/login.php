@@ -4,12 +4,19 @@ require_once '../config/database.php';
 require_once '../security/asymmetric/ntru_encryption.php';
 require_once '../security/key_management.php';
 require_once '../security/asymmetric/ecc_encryption.php';
+require_once '../security/tls/tls_handshake.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'];
     $password = $_POST['password'];
 
     try {
+        // Initialize TLS handshake
+        $tls = new TLSHandshake();
+        $context = $tls->startHandshake();
+        $socket = $tls->secureConnection('localhost', 443, $context);
+
+        // Perform secure database query
         $stmt = $pdo->prepare("SELECT * FROM users WHERE username = :username");
         $stmt->execute(['username' => $username]);
         $user = $stmt->fetch();

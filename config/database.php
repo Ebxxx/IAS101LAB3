@@ -1,6 +1,6 @@
 <?php
 // Database configuration constants
-define('DB_HOST', 'localhost:3307');
+define('DB_HOST', 'localhost:3306');
 define('DB_NAME', 'user_data');
 define('DB_USER', 'root');
 define('DB_PASS', '');

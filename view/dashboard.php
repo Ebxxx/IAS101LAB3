@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../security/homomorphic/homomorphic_key_management.php';
 require_once __DIR__ . '/../security/homomorphic/paillier_encryption.php';
 require_once __DIR__ . '/../config/database.php';
+require_once '../security/tls/tls_handshake.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
@@ -19,6 +20,11 @@ $keys = null;
 // Only initialize encryption if form is submitted
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['calculate_salary'])) {
     try {
+        // Initialize TLS handshake
+        $tls = new TLSHandshake();
+        $context = $tls->startHandshake();
+        $socket = $tls->secureConnection('localhost', 443, $context);
+
         // Initialize encryption only when needed
         $keyManager = HomomorphicKeyManagement::getInstance();
         $paillier = new PaillierEncryption();

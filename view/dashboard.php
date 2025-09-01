@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../security/homomorphic/homomorphic_key_management.php';
 require_once __DIR__ . '/../security/homomorphic/paillier_encryption.php';
 require_once __DIR__ . '/../config/database.php';
+require_once '../security/tls/tls_handshake.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
@@ -19,6 +20,11 @@ $keys = null;
 // Only initialize encryption if form is submitted
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['calculate_salary'])) {
     try {
+        // Initialize TLS handshake
+        $tls = new TLSHandshake();
+        $context = $tls->startHandshake();
+        $socket = $tls->secureConnection('localhost', 443, $context);
+
         // Initialize encryption only when needed
         $keyManager = HomomorphicKeyManagement::getInstance();
         $paillier = new PaillierEncryption();
@@ -48,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['calculate_salary'])) 
         
         // Format the results
         $salaryCalculation = sprintf(
-            "Base Salary: $%s\nBonus: $%s\nGross Salary: $%s\nTax Rate: %.1f%%\nNet Salary: $%.2f",
+            "Base Salary: ₱%s\nBonus: ₱%s\nGross Salary: ₱%s\nTax Rate: %.1f%%\nNet Salary: ₱%.2f",
             number_format($baseSalary),
             number_format($bonus),
             number_format($grossSalary),
@@ -127,12 +133,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['calculate_salary'])) 
             
             <form method="POST" action="">
                 <div class="form-group">
-                    <label for="base_salary">Base Salary ($):</label>
+                    <label for="base_salary">Base Salary (₱):</label>
                     <input type="number" id="base_salary" name="base_salary" min="0" required>
                 </div>
                 
                 <div class="form-group">
-                    <label for="bonus">Bonus ($):</label>
+                    <label for="bonus">Bonus (₱):</label>
                     <input type="number" id="bonus" name="bonus" min="0" required>
                 </div>
                 
@@ -152,15 +158,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['calculate_salary'])) 
                 </tr>
                 <tr>
                     <td>Base Salary</td>
-                    <td class="amount">$<?php echo number_format($baseSalary); ?></td>
+                    <td class="amount">₱<?php echo number_format($baseSalary); ?></td>
                 </tr>
                 <tr>
                     <td>Bonus</td>
-                    <td class="amount">$<?php echo number_format($bonus); ?></td>
+                    <td class="amount">₱<?php echo number_format($bonus); ?></td>
                 </tr>
                 <tr>
                     <td>Gross Salary</td>
-                    <td class="amount">$<?php echo number_format($grossSalary); ?></td>
+                    <td class="amount">₱<?php echo number_format($grossSalary); ?></td>
                 </tr>
                 <tr>
                     <td>Tax Rate</td>
@@ -168,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['calculate_salary'])) 
                 </tr>
                 <tr class="highlight">
                     <td>Net Salary</td>
-                    <td class="amount">$<?php echo number_format($netSalary, 2); ?></td>
+                    <td class="amount">₱<?php echo number_format($netSalary, 2); ?></td>
                 </tr>
             </table>
             <?php endif; ?>

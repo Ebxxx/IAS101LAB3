@@ -4,17 +4,35 @@ require_once '../config/database.php';
 require_once '../security/asymmetric/ntru_encryption.php';
 require_once '../security/key_management.php';
 require_once '../security/asymmetric/ecc_encryption.php';
+require_once '../security/tls/tls_handshake.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'];
     $password = $_POST['password'];
 
     try {
+        // First verify user credentials before establishing TLS
         $stmt = $pdo->prepare("SELECT * FROM users WHERE username = :username");
         $stmt->execute(['username' => $username]);
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password'])) {
+            // User is authenticated, now establish TLS handshake
+            $tls = new TLSHandshake();
+            $context = $tls->startHandshake();
+            $socket = $tls->secureConnection('localhost', 8443, $context);
+
+            // Send authenticated user info to server
+            fwrite($socket, "Authenticated user: {$username}\n \n Hello from login.php");
+
+            // Read the server's response
+            $response = fread($socket, 1024);
+            echo "Server response: $response\n";
+
+            // Close the connection
+            fclose($socket);
+
+            // Set session variables
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             
